@@ -1,0 +1,12 @@
+{
+  "name": "otel-collector-deep-dive",
+  "version": "1.0.0",
+  "private": true,
+  "description": "OpenTelemetry Collector Deep Dive - Bloomberg Sustaining OTel Mentorship",
+  "devDependencies": {
+    "@marp-team/marp-cli": "^4.4.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
