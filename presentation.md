@@ -31,7 +31,7 @@ Kemal Akkoyun · OpenTelemetry Maintainer · Datadog
 
 ---
 
-# Why Does a Simple PR Take Three Weeks?
+# Why Does a PR Take Three Weeks?
 
 Ondrej Balaz's mdatagen PR — 452 additions, eight comments, merged in three weeks:
 
@@ -39,7 +39,7 @@ Ondrej Balaz's mdatagen PR — 452 additions, eight comments, merged in three we
 May 07  ✔ CLA signed
 May 07  → "should I also implement multipleOf?"
 May 08  ← "no use case yet, wait"
-May 09  → "fixed linter — forgot to run make fmt"
+May 09  → "linter pass — missed make fmt"
 May 11  ← "please rebase and fix CI failures"
 May 12  → "done, can you re-run the CI?"
 May 15  → "can you help me start the CI workflows?"
@@ -385,7 +385,7 @@ import "go.opentelemetry.io/collector/confmap"
 confmap.Provider, confmap.Conf
 ```
 
-Pavel's confmap work builds directly on this module.
+Pavel's confmap work ([#48414](https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/48414)) builds directly on this module.
 Old tutorials that show `config.Map` are not wrong — they predate the extraction.
 
 <span class="small">
@@ -499,7 +499,7 @@ receivers:
 
 # Signal Intent First
 
-The single most important thing Pierre and I want you to take from this session:
+The single most important thing I want you to take from this session:
 
 * **Ask before building.**
 * **Build the smallest thing that proves the idea.**
@@ -590,7 +590,7 @@ The problem — Thomas's RFC ([contrib#48277](https://github.com/open-telemetry/
 
 * Thomas: *"separate ext avoids pulling AWS SDK into basicauthextension"*
 
-* Pavel closes #48380, opens [#48414](https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/48414) — extract shared logic → `extension/internal/basicauth` **(MERGED)**
+* Pavel closes [#48380](https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/48380), opens [#48414](https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/48414) — extract shared logic → `extension/internal/basicauth` **(MERGED)**
 
 * Larry comments on [#48277](https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/48277) RFC *before* writing code — signals intent, then opens [#48484](https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/48484)
 
@@ -673,7 +673,7 @@ in a maintainer's queue → weeks of back-and-forth, possible rejection.
 
 ---
 
-# Case Study C: What Happens Without a Signal
+# Case Study C: The Cold Landing
 
 Ondrej Balaz's mdatagen PR — same one as the opening slide. No prior issue, no RFC, code landed cold:
 
@@ -681,7 +681,7 @@ Ondrej Balaz's mdatagen PR — same one as the opening slide. No prior issue, no
 May 07  CLA bot fires
 May 07  Ondrej:      "should I also implement multipleOf?"   ← scope question  ✓
 May 08  maintainer:  "no use case yet, don't bother"         ← scope locked, proceed
-May 09  Ondrej:      "forgot make fmt, fixed"                ← linter bite
+May 09  Ondrej:      "linter pass, missed make fmt"            ← linter bite
 May 11  maintainer:  "please rebase and fix CI failures"
 May 12  Ondrej:      "done — can you re-run the CI?"         ← CI needs maintainer
 May 15  Ondrej:      "can you help me start the CI workflows?"
