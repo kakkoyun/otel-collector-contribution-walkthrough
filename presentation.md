@@ -31,9 +31,9 @@ Kemal Akkoyun · OpenTelemetry Maintainer · Datadog
 
 ---
 
-# Why Does a 7-Line PR Take 6 Weeks?
+# Why Does a Simple PR Take Three Weeks?
 
-A real contributor's mdatagen PR. Eight comments over three weeks:
+Ondrej Balaz's mdatagen PR — 452 additions, eight comments, merged in three weeks:
 
 ```
 May 07  ✔ CLA signed
@@ -60,10 +60,10 @@ This is **not** a Bloomberg problem. It is the ecosystem.
 
 | Architectural | Social | Historical |
 |---|---|---|
-| multi-module repo | CODEOWNERS sprawl | accreted APIs |
-| `go.mod` per component | maintainer math | renamed types |
-| codegen / mdatagen | review SLOs | why does this exist? |
-| stability tiers | stale-bot churn | |
+| multi-module repo | CODEOWNERS sprawl | renamed types |
+| `go.mod` per component | maintainer math | moved packages |
+| codegen / mdatagen | review SLOs | dead tutorials |
+| stability tiers | stale-bot churn | accreted APIs |
 
 **The Collector is complicated for structural reasons, not accidental ones.**
 
@@ -78,9 +78,11 @@ This is **not** a Bloomberg problem. It is the ecosystem.
 
 ---
 
-# One Repository. ~25 Go Modules. 250+ Components.
+# Two Repositories. Two Module Structures.
 
-**opentelemetry-collector-contrib** — each component is its own `go.mod`:
+**opentelemetry-collector** (core) — ~25 module groups in `versions.yaml`, two versioning tracks (stable / beta).
+
+**opentelemetry-collector-contrib** — 300+ independent `go.mod` files, one per component:
 
 ```
 receiver/hostmetricsreceiver/go.mod
@@ -97,7 +99,7 @@ The cost: **every component is an independent module release.**
 
 <span class="small">
 
-[versions.yaml · 0093005](https://github.com/open-telemetry/opentelemetry-collector/blob/009300517f680bae6ebf0640f3d8213ec888e4ab/versions.yaml)
+[versions.yaml · 0093005](https://github.com/open-telemetry/opentelemetry-collector/blob/009300517f680bae6ebf0640f3d8213ec888e4ab/versions.yaml) — core's module groups
 
 </span>
 
@@ -136,6 +138,8 @@ module-sets:
 ---
 
 # The Lockstep Problem
+
+*Lockstep: two systems that can only advance in sync — neither can release independently of the other.*
 
 Change a core interface → must update every contrib module that depends on it.
 
@@ -254,15 +258,14 @@ across multiple companies, time zones, day jobs.
 250+ components in contrib. A handful of core maintainers who can approve anything.
 Component approvers who can only approve their slice.
 
-The "priority components" list exists because maintainers had to triage **themselves**:
+The "priority components" list exists because maintainers had to triage **themselves**.
 
-```
-  PRs/week across all components → ~30–50
-  Maintainer review capacity     → finite
-  ────────────────────────────────────────────
-  Non-priority component PR wait → days to weeks
-  Priority component PR wait     → 1–3 days
-```
+~30–50 PRs/week across all of contrib. Finite reviewers.
+
+| | Review wait |
+|---|---|
+| Non-priority component | days to weeks |
+| Priority component | 1–3 days |
 
 **This is not a broken process. It is a governance model under load.**
 
@@ -295,6 +298,7 @@ The rules are already written down. **Read them.**
 ---
 
 # Stale-Bot Is a Tool, Not a Verdict
+## First Response
 
 ~3,000 open issues in contrib. Without the stale-bot, noise drowns signal.
 
@@ -308,6 +312,7 @@ When your PR goes quiet for 7 days:
 ---
 
 # Stale-Bot Is a Tool, Not a Verdict
+## Escalation Path
 
 Still quiet after 30 days:
 
@@ -315,6 +320,104 @@ Still quiet after 30 days:
 * Add to Collector SIG meeting agenda
 * Two full cycles with no movement? **Come back with a smaller scope.**
 * An 8-month gap before a codeowner replied is real ([contrib#35305](https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/35305)). **Plan for it.**
+
+---
+
+<!-- _class: lead -->
+
+# Why Is It Complicated?
+## Historical
+
+---
+
+# Old PRs Lie
+
+The Collector has 4+ years of active evolution. A PR from 2022 is not wrong —
+it was correct for its version. But it will confuse you today.
+
+| Change | Old pattern | New pattern | Since |
+|---|---|---|---|
+| Data types | `model/pdata.AttributeMap` | `pcommon.Map` | v0.49.0 · Apr 2022 |
+| Config loading | `config.MapProvider` | `confmap.Provider` | v0.53.0 · Jun 2022 |
+| Component type | `component.Type("foo")` | `component.MustNewType("foo")` | v0.97.0 · Feb 2024 |
+| Scraper helper | `receiver/scraperhelper` | `scraper/scraperhelper` | v0.117.0 · Jan 2025 |
+
+**Before opening an issue or following an example: check when it was written.**
+
+---
+
+# The Pattern That No Longer Compiles
+
+Every component factory changed in **February 2024** (v0.97.0):
+
+```go
+// Pre-v0.97 — every tutorial and blog post before Feb 2024 still shows this
+const typeStr = component.Type("hostmetrics")
+
+// Post-v0.97 — required today; bare string is a compile error
+var typeStr = component.MustNewType("hostmetrics")
+```
+
+`MustNewType` validates the string at startup (ASCII alphanumeric + `_`, starts with a letter).
+The error message does not say "use MustNewType" — it says the type doesn't exist.
+
+This affects **every receiver, processor, exporter, connector, and extension factory.**
+
+<span class="small">
+
+[collector#9414](https://github.com/open-telemetry/opentelemetry-collector/pull/9414) · v0.97.0 · Feb 2024
+
+</span>
+
+---
+
+# When the Import Path Moved: confmap
+
+Config loading was extracted from `service` into its own module in Jun 2022 (v0.53.0):
+
+```go
+// Pre-v0.53 — visible in any PR or doc from before mid-2022
+import "go.opentelemetry.io/collector/config"
+config.MapProvider, config.Map
+
+// Now
+import "go.opentelemetry.io/collector/confmap"
+confmap.Provider, confmap.Conf
+```
+
+Pavel's confmap work builds directly on this module.
+Old tutorials that show `config.Map` are not wrong — they predate the extraction.
+
+<span class="small">
+
+[collector#5237](https://github.com/open-telemetry/opentelemetry-collector/pull/5237) · v0.53.0 · Jun 2022
+
+</span>
+
+---
+
+# When the Import Path Moved: scraper
+
+`scraperhelper` was moved out of the `receiver` module in Jan 2025 (v0.117.0):
+
+```go
+// Pre-v0.117 — still the import path in most contrib components today
+import "go.opentelemetry.io/collector/receiver/scraperhelper"
+
+// Now
+import "go.opentelemetry.io/collector/scraper/scraperhelper"
+```
+
+This is recent enough that most open PRs and the majority of contrib components
+still use the old path. Expect to see both in the wild.
+
+**Rule:** if a PR's imports don't resolve, look up the version boundary before rewriting.
+
+<span class="small">
+
+[collector#11985](https://github.com/open-telemetry/opentelemetry-collector/pull/11985) · v0.117.0 · Jan 2025
+
+</span>
 
 ---
 
@@ -405,6 +508,7 @@ The single most important thing Pierre and I want you to take from this session:
 ---
 
 # Signal Intent First
+## The Why
 
 A PR that surprises a maintainer is one they must evaluate from scratch.
 
@@ -475,8 +579,8 @@ The problem — Thomas's RFC ([contrib#48277](https://github.com/open-telemetry/
 > "A lot of production infrastructure stores and rotates secrets through managed stores.
 > The gap means teams end up **running a sidecar just to fetch the secret and write it
 > to disk** so the file watcher can pick it up."
-
-Happy to contribute this upstream if there's appetite for it.
+>
+> Happy to contribute this upstream if there's appetite for it.
 
 ---
 
@@ -488,7 +592,11 @@ Happy to contribute this upstream if there's appetite for it.
 
 * Pavel closes #48380, opens [#48414](https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/48414) — extract shared logic → `extension/internal/basicauth` **(MERGED)**
 
-* Thomas → [#48406](https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/48406) · Mikiyas → [#48474](https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/48474) + [#48477](https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/48477) · Larry → [#48484](https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/48484)
+* Larry comments on [#48277](https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/48277) RFC *before* writing code — signals intent, then opens [#48484](https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/48484)
+
+* Thomas → [#48406](https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/48406)  (AWS extension)
+* Mikiyas → [#48474](https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/48474) + [#48477](https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/48477)  (AWS + GCP extensions)
+* Larry → [#48484](https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/48484)  (Azure Key Vault extension)
 
 ---
 
@@ -519,7 +627,7 @@ Four engineers. Four cloud providers. Four parallel PRs. All mergeable.
 </div>
 
 **Pavel:** *"Yes, a shared internal module sounds like the right approach."*
-**Thomas:** *"Thanks! We'll update our PR to be built on top of your changes now!"*
+**Thomas:** *"thanks! We'll update our PR to be built on top of your PR changes now!"*
 
 <span class="small">
 
@@ -534,9 +642,10 @@ Four engineers. Four cloud providers. Four parallel PRs. All mergeable.
 Abhimanyu's depguard rule ([contrib#48716](https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/48716)):
 
 ```diff
-+  [linters-settings.depguard.rules.aws-sdk-v1]
-+    deny = [{ pkg = "github.com/aws/aws-sdk-go",
-+              desc = "use AWS SDK v2 instead, see #36699" }]
++          aws-sdk-v1:
++            deny:
++              - pkg: github.com/aws/aws-sdk-go
++                desc: "Use github.com/aws/aws-sdk-go-v2 instead. See #36699"
 ```
 
 The PR description opens with:
@@ -545,6 +654,11 @@ The PR description opens with:
 > to prevent regression while remaining component migrations complete."
 
 Seven lines. One sentence linking to the prior conversation. **Immediately reviewable.**
+
+---
+
+# Case Study B: The 7-Line PR
+## The Lesson
 
 Contrast: a 500-line cross-component migration, no prior discussion, lands cold
 in a maintainer's queue → weeks of back-and-forth, possible rejection.
@@ -559,18 +673,18 @@ in a maintainer's queue → weeks of back-and-forth, possible rejection.
 
 ---
 
-# Case Study C: When the Workflow Fights You
+# Case Study C: What Happens Without a Signal
 
-A real mdatagen PR — every newcomer friction, in one thread:
+Ondrej Balaz's mdatagen PR — same one as the opening slide. No prior issue, no RFC, code landed cold:
 
 ```
 May 07  CLA bot fires
-May 07  contributor: "should I also implement multipleOf?"   ← scope question  ✓
+May 07  Ondrej:      "should I also implement multipleOf?"   ← scope question  ✓
 May 08  maintainer:  "no use case yet, don't bother"         ← scope locked, proceed
-May 09  contributor: "forgot make fmt, fixed"                ← linter bite
+May 09  Ondrej:      "forgot make fmt, fixed"                ← linter bite
 May 11  maintainer:  "please rebase and fix CI failures"
-May 12  contributor: "done — can you re-run the CI?"         ← CI needs maintainer
-May 15  contributor: "can you help me start the CI workflows?"
+May 12  Ondrej:      "done — can you re-run the CI?"         ← CI needs maintainer
+May 15  Ondrej:      "can you help me start the CI workflows?"
 May 26  merged
 ```
 
@@ -617,7 +731,7 @@ it saved a revision cycle later.
 |---|---|
 | Bug fixes on priority components | Fast review lane |
 | Component README / doc gaps | Low risk, always welcome |
-| `metadata.yaml` feature-gate migrations | Mechanical, maintainers need help |
+| `metadata.yaml` feature-gate migrations | Mechanical · 40-line PRs like Pavel's [#48619](https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/48619) · umbrella: [#46116](https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/46116) |
 | Semconv attribute updates | Contributor-friendly, active community |
 | AWS SDK v1 → v2 migration | Active umbrella [#36699](https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/36699), owner engaged |
 
@@ -627,12 +741,11 @@ it saved a revision cycle later.
 
 **Check three things before writing a line of code:**
 
-1. Is it on the priority list? → [contrib#44130](https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/44130)
-2. Does an umbrella issue exist? → claim it, don't create a parallel one
-3. Is the codeowner active? → check their last merged PR in that component
-
-**Avoid as a first PR:** new component from scratch, cross-repo API changes,
-anything touching `pdata` or `confmap` core internals.
+1) Is it on the priority list? → [contrib#44130](https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/44130)
+2) Does an umbrella issue exist? → claim it, don't create a parallel one
+3) Is the codeowner active? → check their last merged PR in that component
+4) **Avoid as a first PR:** new component from scratch, cross-repo API changes,
+   anything touching `pdata` or `confmap` core internals.
 
 ---
 
@@ -698,15 +811,14 @@ It starts the conversation before the code exists.
 <div class="small">
 
 **Curated issues (mentorship spreadsheet):**
-→ drop link in chat
+[docs.google.com/spreadsheets/d/1XVU-KC438q4hEr6Mx1YZD4LdGGt5FXGSSZUbB3_kSrY](https://docs.google.com/spreadsheets/d/1XVU-KC438q4hEr6Mx1YZD4LdGGt5FXGSSZUbB3_kSrY/edit?usp=sharing)
 
 **Reading:**
 - [Bloomberg: Sustaining OpenTelemetry](https://www.bloomberg.com/company/stories/sustaining-opentelemetry-why-bloomberg-joined-the-opentelemetry-project/)
 - [CNCF Blog: Bloomberg × OTel](https://www.cncf.io/blog/2024/10/17/bloomberg-and-opentelemetry-sustaining-open-source-through-engineering-excellence/)
 
 **First deck (architecture & internals):**
-→ available on request
-
+`otel-collector-deep-dive/presentation.md`
 
 </div>
 
