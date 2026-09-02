@@ -480,7 +480,7 @@ receivers:
 
 **[cmd/mdatagen] Move feature gates to metadata.yaml** · [#46116](https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/46116)
 
-| | |
+| | 
 |---|---|
 | **Scope** | One component at a time — take as many as you want |
 | **Shape** | Mechanical migration — hard to get catastrophically wrong |
@@ -488,7 +488,7 @@ receivers:
 
 **The shape of a good entry door: bounded, owner-engaged, clear acceptance.**
 
----
+
 
 <!-- _class: lead -->
 
